@@ -132,7 +132,7 @@ print("\nFollow of each variable:")
 def find_follow(prodlist, symbol):
     temp1=[]
     for prod in prodlist[1]:
-        if symbol in prod:
+        while symbol in prod:
             if symbol==prodlist[0]:
                 continue
             loc=prod.find(symbol)
@@ -152,6 +152,7 @@ def find_follow(prodlist, symbol):
                 else:
                     for k in follow[prodlist[0]]:
                         temp1.append(k)
+            prod=prod[loc+1:]
     return temp1
 
 def getfirst(origin, prod, loc):
