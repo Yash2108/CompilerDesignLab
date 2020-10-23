@@ -1,3 +1,6 @@
-A=e|CdB|d
-B=a|Cd|ε
-C=ae|ε
+E=TG
+G=+TG|ε
+T=FS
+S=*FS|ε
+F=i|(E)
+i+i*i

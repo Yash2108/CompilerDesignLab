@@ -1,46 +1,63 @@
 '''
 Program by: Yash Jain, BT18GCS008.
-This program reads input from a file.
-It removes Direct Left Recursion, prints out the First and Follow of all non-terminal symbols.
-The input should be in a file with the name 'Follow Input.txt' without the inverted commas.
+This program reads input from a file. Please do not leave any empty lines or spaces.
+It removes Direct Left Recursion, prints out the First and Follow of all non-terminal symbols,
+checks whether Grammar is Parsable. Also prints out the Parsing Table.
+The program also checks the input string whether its parsable.
+Enter the Grammar and the String to be checked in a file with the name 'LL1 Parsing Input.txt' without the inverted commas.
 Format: Use =, ε, | signs to write the grammar. For multiple production, use multiple lines.
+Enter the string to be checked in the last line.
 
 Sample Input:
-S=ABa|bCA
-A=cBCD|ε
-B=CdA|ad
-C=eC|ε
-D=bsf|a
+E=TG
+G=+TG|ε
+T=FS
+S=*FS|ε
+F=i|(E)
+i+i*i
 
 Sample Output:
 Removed Left Recursion from grammar:
-S=ABa|bCA
-A=cBCD|ε
-B=CdA|ad
-C=eC|ε
-D=bsf|a
+E=TG
+G=+TG|ε
+T=FS
+S=*FS|ε
+F=i|(E)
 
 First of each variable:
-First(S)={c,e,d,a,b}
-First(A)={c,ε}
-First(B)={e,d,a}
-First(C)={e,ε}
-First(D)={b,a}
+First(E)={i,(}
+First(G)={+,ε}
+First(T)={i,(}
+First(S)={*,ε}
+First(F)={i,(}
 
 Follow of each variable:
-Follow(S)={$}
-Follow(A)={e,d,a,$,b}
-Follow(B)={a,e,b}
-Follow(C)={c,$,b,a,d}
-Follow(D)={e,d,a,$,b}
+Follow(E)={$,)}
+Follow(G)={$,)}
+Follow(T)={+,$,)}
+Follow(S)={+,$,)}
+Follow(F)={*,+,$,)}
+
+Parsing Table:
+         (      )        *        +       i      $
+E   [E=TG]     []       []       []  [E=TG]     []
+G       []  [G=ε]       []  [G=+TG]      []  [G=ε]
+T   [T=FS]     []       []       []  [T=FS]     []
+S       []  [S=ε]  [S=*FS]    [S=ε]      []  [S=ε]
+F  [F=(E)]     []       []       []   [F=i]     []
+This grammar is LL(1) Parsable
+This string is Parsable!
 '''
 import pandas as pd
-import tabulate
 file1=open("E:/UNI/Moodle/Semester 5/Compiler Design/Lab/LL(1) Parsing/LL1 Parsing Input.txt", 'r')
 lines=file1.readlines()
 lines=[i.strip().split('=') for i in lines]
 grammar={}
-for i in range(len(lines)):
+parseString=lines[len(lines)-1][0]+'$'
+lines.remove(lines[len(lines)-1])
+for i in range(len(lines)-1):
+    if len(lines[i])==1:
+        continue
     while 'Îµ' in lines[i][1]:
         loc=lines[i][1].find('µ')
         lines[i][1]=lines[i][1][:loc-1]+'\u03b5'+lines[i][1][loc+1:]
@@ -228,22 +245,22 @@ for i in finalgrammar.items():
 #     return x
 def findFirst(prod):
     temp=[]
-    print('at the beginning',prod[0])
+    # print('at the beginning',prod[0])
     if prod[0] in terminals or prod=='ε':
         temp.append(prod[0])
     else:
         val=first[prod[0]].copy()
-        print('Inside else',val)
+        # print('Inside else',val)
         if 'ε' in val:
-            print(first)
+            # print(first)
             val.remove('ε')
-            print(first)
+            # print(first)
             for k in val:
                 temp.append(k)
             if len(prod)!=1:
-                print("Going to recurse from%s:"%prod[0], prod[1:])
+                # print("Going to recurse from%s:"%prod[0], prod[1:])
                 val=findFirst(prod[1:])
-                print("Just recursed, ", val)
+                # print("Just recursed, ", val)
                 for k in val:
                     temp.append(k)
             else:
@@ -258,7 +275,7 @@ for i in finalgrammar_prod_wise:
     # print("Checking for: ", i[0])
     production=i.split('=')
     first_prod_wise[i]=findFirst( production[1])
-print(first_prod_wise)
+# print(first_prod_wise)
 parsing_table={i[0]:{k:[] for k in terminals} for i in finalgrammar.items()}
 
 for i in finalgrammar.items():
@@ -289,7 +306,64 @@ for i in parsing_table_df:
     for j in parsing_table_df[i]:
         if len(j)>1:
             notLL1parsable=True
+
+class Stack:
+     def __init__(self):
+         self.items = []
+
+     def isNotEmpty(self):
+         return self.items != []
+
+     def push(self, item):
+         self.items.append(item)
+
+     def pop(self):
+         return self.items.pop()
+
+     def top(self):
+         return self.items[len(self.items)-1]
+def parseTheString(parseString):
+    parseStack=Stack()
+    parseStack.push('$')
+    parseStack.push(list(finalgrammar.keys())[0])
+    lookAheadIndex=0
+    parsed=False
+    while parseStack.isNotEmpty():
+        topVal=parseStack.top()
+        lookAheadSymbol=parseString[lookAheadIndex]
+        if topVal=='ε':
+            parseStack.pop()
+        # print("TopVal=%s and Look ahead=%s\Stack,"%(topVal, lookAheadSymbol), len(parseString[lookAheadIndex:]))
+        if topVal==lookAheadSymbol=='$':
+            parsed=True
+            parseStack.pop()
+            parsed=True
+            break
+        elif topVal==lookAheadSymbol!='$':
+            lookAheadIndex+=1
+            parseStack.pop()
+        elif topVal not in terminals:
+            if len(parsing_table_df[lookAheadSymbol][topVal])!=0:
+                val=parsing_table_df[lookAheadSymbol][topVal][0]
+                val=val[val.find('=')+1:]
+                parseStack.pop()
+                for k in val[::-1]:
+                    if k!='ε':
+                        parseStack.push(k)
+            else:
+                parsed=False
+                break
+        elif topVal=='$' and lookAheadSymbol!='$':
+            parsed=False
+            break
+    return parsed
+
 if notLL1parsable:
     print("This grammar is not LL(1) Parsable")
 else:
-    print("This grammar not LL(1) Parsable")
+    print("This grammar is LL(1) Parsable")
+    parsable=parseTheString(parseString)
+    if parsable:
+        print("This string is Parsable!")
+    else:
+        print("Either there is an error in the table or the string is Not Parsable.")
