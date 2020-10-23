@@ -34,7 +34,9 @@ Follow(B)={a,e,b}
 Follow(C)={c,$,b,a,d}
 Follow(D)={e,d,a,$,b}
 '''
-file1=open("E:/UNI/Moodle/Semester 5/Compiler Design/Lab/Follow/Follow Input.txt", 'r')
+import pandas as pd
+import tabulate
+file1=open("E:/UNI/Moodle/Semester 5/Compiler Design/Lab/LL(1) Parsing/LL1 Parsing Input.txt", 'r')
 lines=file1.readlines()
 lines=[i.strip().split('=') for i in lines]
 grammar={}
@@ -88,7 +90,7 @@ def check(terminal_symbol, variable_number):
     temp=[]
     for j in finalgrammar[terminal_symbol]:
         variable_number=0
-        if j[variable_number] not in finalgrammar.keys():
+        if j[variable_number] not in finalgrammar.keys() and j[variable_number]:
             temp.append(j[0])
         else:
             checked=check(j[0],0)
@@ -114,7 +116,10 @@ def check(terminal_symbol, variable_number):
 first={i: [] for i in finalgrammar.keys()}
 for i in finalgrammar.items():
     # print("Checking for: ", i[0])
-    first[i[0]]=check(i[0], 0)
+    val=check(i[0], 0)
+    for j in val:
+        if j not in first[i[0]]:
+            first[i[0]].append(j)
 
 print("First of each variable:")
 for i in first.items():
@@ -127,14 +132,14 @@ for i in first.items():
     print()
 
 follow={i: [] for i in finalgrammar}
-
 follow[list(finalgrammar.keys())[0]].append('$')
 print("\nFollow of each variable:")
+
 def find_follow(prodlist, symbol):
     temp1=[]
     for prod in prodlist[1]:
-        if symbol==prodlist[0]:
-            continue
+        # if symbol==prodlist[0]:
+        #     continue
         while symbol in prod:
             loc=prod.find(symbol)
             if loc!=len(prod)-1:
@@ -157,7 +162,7 @@ def find_follow(prodlist, symbol):
                 prod=''
             else:
                 prod=prod[loc+1:]
-                print(prod)
+                # print(prod)
     return temp1
 
 def getfirst(origin, prod, loc):
@@ -189,9 +194,9 @@ def getfirst(origin, prod, loc):
     return temp
 for i in finalgrammar.items():
     for j in finalgrammar.items():
-        print("Getting follow for:%s from:"%i[0], j)
+        # print("Getting follow for:%s from:"%i[0], j)
         receive=find_follow(j, i[0])
-        print("Got follow for %s:"%i[0], receive)
+        # print("Got follow for %s:"%i[0], receive)
         for k in receive:
             if k not in follow[i[0]]:
                 follow[i[0]].append(k)
@@ -203,3 +208,88 @@ for i in follow.items():
         else:    
             print("%s,"%i[1][j], end='')
     print()
+terminals=[]
+for i in finalgrammar.items():
+    for j in i[1]:
+        for k in j:
+            if k not in finalgrammar.keys() and k not in terminals:
+                terminals.append(k)
+if 'ε' in terminals:
+    terminals.remove('ε')
+terminals.sort()
+terminals.append('$')
+
+finalgrammar_prod_wise=[]
+for i in finalgrammar.items():
+    for j in i[1]:
+        finalgrammar_prod_wise.append(i[0]+'='+j)
+# def retrieveFirst(val):
+#     x=first[val]
+#     return x
+def findFirst(prod):
+    temp=[]
+    print('at the beginning',prod[0])
+    if prod[0] in terminals or prod=='ε':
+        temp.append(prod[0])
+    else:
+        val=first[prod[0]].copy()
+        print('Inside else',val)
+        if 'ε' in val:
+            print(first)
+            val.remove('ε')
+            print(first)
+            for k in val:
+                temp.append(k)
+            if len(prod)!=1:
+                print("Going to recurse from%s:"%prod[0], prod[1:])
+                val=findFirst(prod[1:])
+                print("Just recursed, ", val)
+                for k in val:
+                    temp.append(k)
+            else:
+                temp.append('ε')
+        else:
+            for k in val:
+                temp.append(k)
+    return temp
+                
+first_prod_wise={i: [] for i in finalgrammar_prod_wise}
+for i in finalgrammar_prod_wise:
+    # print("Checking for: ", i[0])
+    production=i.split('=')
+    first_prod_wise[i]=findFirst( production[1])
+print(first_prod_wise)
+parsing_table={i[0]:{k:[] for k in terminals} for i in finalgrammar.items()}
+
+for i in finalgrammar.items():
+    for j in i[1]:
+        if j=='ε':
+            for k in follow[i[0]]:
+                if k=='ε':
+                    k='$'
+                if i[0]+'='+j not in parsing_table[i[0]][k]:
+                    parsing_table[i[0]][k].append(i[0]+'='+j)
+        else:
+            for k in first_prod_wise[i[0]+'='+j]:
+                if k=='ε':
+                    k='$'
+                if i[0]+'='+j not in parsing_table[i[0]][k]:
+                    parsing_table[i[0]][k].append(i[0]+'='+j)
+row=[]
+for i in parsing_table.items():
+    data_row=i[1]
+    nonterminal=i[0]
+    data_row['Non-Terminal']=nonterminal
+    row.append(data_row)
+parsing_table_df=pd.DataFrame(row, index=parsing_table.keys(),columns=terminals)
+print("\nParsing Table:")
+print(parsing_table_df)
+notLL1parsable=False
+for i in parsing_table_df:
+    for j in parsing_table_df[i]:
+        if len(j)>1:
+            notLL1parsable=True
+if notLL1parsable:
+    print("This grammar is not LL(1) Parsable")
+else:
+    print("This grammar not LL(1) Parsable")
