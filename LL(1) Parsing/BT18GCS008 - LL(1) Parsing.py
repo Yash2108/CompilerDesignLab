@@ -18,51 +18,87 @@ i+i*i
 
 Sample Output:
 Removed Left Recursion from grammar:
-E=TG
-G=+TG|ε
-T=FS
-S=*FS|ε
-F=i|(E)
+S=(S)|ε
 
-First of each variable:
-First(E)={i,(}
-First(G)={+,ε}
-First(T)={i,(}
-First(S)={*,ε}
-First(F)={i,(}
+First of each variable: 
+First(S)={(,ε}
 
 Follow of each variable:
-Follow(E)={$,)}
-Follow(G)={$,)}
-Follow(T)={+,$,)}
-Follow(S)={+,$,)}
-Follow(F)={*,+,$,)}
+Follow(S)={$,)}
 
 Parsing Table:
-         (      )        *        +       i      $
-E   [E=TG]     []       []       []  [E=TG]     []
-G       []  [G=ε]       []  [G=+TG]      []  [G=ε]
-T   [T=FS]     []       []       []  [T=FS]     []
-S       []  [S=ε]  [S=*FS]    [S=ε]      []  [S=ε]
-F  [F=(E)]     []       []       []   [F=i]     []
+         (      )      $
+S  [S=(S)]  [S=ε]  [S=ε]
 This grammar is LL(1) Parsable
+Parsing ((())):
+
+String left to parse:((()))$ and Top of the Stack=S
+Top of stack is a variable. Popping current value and adding (S) into stack.
+Pushing ) into the stack
+Pushing S into the stack
+Pushing ( into the stack
+
+String left to parse:((()))$ and Top of the Stack=(
+Top of stack and look ahead symbol match. Incrementing look ahead and popping stack.
+
+String left to parse:(()))$ and Top of the Stack=S
+Top of stack is a variable. Popping current value and adding (S) into stack.
+Pushing ) into the stack
+Pushing S into the stack
+Pushing ( into the stack
+
+String left to parse:(()))$ and Top of the Stack=(
+Top of stack and look ahead symbol match. Incrementing look ahead and popping stack.
+
+String left to parse:()))$ and Top of the Stack=S
+Top of stack is a variable. Popping current value and adding (S) into stack.
+Pushing ) into the stack
+Pushing S into the stack
+Pushing ( into the stack
+
+String left to parse:()))$ and Top of the Stack=(
+Top of stack and look ahead symbol match. Incrementing look ahead and popping stack.
+
+String left to parse:)))$ and Top of the Stack=S
+Top of stack is a variable. Popping current value and adding ε into stack.
+
+String left to parse:)))$ and Top of the Stack=)
+Top of stack and look ahead symbol match. Incrementing look ahead and popping stack.
+
+String left to parse:))$ and Top of the Stack=)
+Top of stack and look ahead symbol match. Incrementing look ahead and popping stack.
+
+String left to parse:)$ and Top of the Stack=)
+Top of stack and look ahead symbol match. Incrementing look ahead and popping stack.
+
+String left to parse:$ and Top of the Stack=$
 This string is Parsable!
 '''
 import pandas as pd
+import random
+import string
 file1=open("E:/UNI/Moodle/Semester 5/Compiler Design/Lab/LL(1) Parsing/LL1 Parsing Input.txt", 'r')
 lines=file1.readlines()
 lines=[i.strip().split('=') for i in lines]
 grammar={}
 parseString=lines[len(lines)-1][0]+'$'
 lines.remove(lines[len(lines)-1])
-for i in range(len(lines)-1):
-    if len(lines[i])==1:
-        continue
+for i in range(len(lines)):
+    # if len(lines[i])==1:
+    #     continue
     while 'Îµ' in lines[i][1]:
         loc=lines[i][1].find('µ')
         lines[i][1]=lines[i][1][:loc-1]+'\u03b5'+lines[i][1][loc+1:]
 for i in range(len(lines)):
     grammar[lines[i][0]]=[lines[i][1]]
+nonterminals=[i for i in grammar.keys()]
+def generateVar():
+    global nonterminals
+    x=random.choice(string.ascii_uppercase)
+    while x in nonterminals:
+        x=random.choice(string.ascii_uppercase)
+    nonterminals.append(x)
+    return x
 finalgrammar={i: [] for i in grammar.keys()}
 temp={i: {'alpha':[], 'beta':[]} for i in grammar.keys()}
 for i in grammar.keys():
@@ -87,9 +123,10 @@ for i in grammar.keys():
     if grammar[i][0] not in temp[i]['alpha'] and grammar[i][0] not in temp[i]['beta']:
         temp[i]['beta'].append(grammar[i][0])
     if len(temp[i]['alpha'])!=0:
-        finalgrammar[i+"'"]=[j+i+"'" for j in temp[i]['alpha']]
-        finalgrammar[i+"'"].append('epsilon')
-        finalgrammar[i]=[j+i+"'" for j in temp[i]['beta']]
+        generated=generateVar()
+        finalgrammar[generated]=[j+generated for j in temp[i]['alpha']]
+        finalgrammar[generated].append('ε')
+        finalgrammar[i]=[j+generated for j in temp[i]['beta']]
     else:
         for j in temp[i]['beta']:
             finalgrammar[i].append(j)
@@ -331,6 +368,7 @@ def parseTheString(parseString):
     while parseStack.isNotEmpty():
         topVal=parseStack.top()
         lookAheadSymbol=parseString[lookAheadIndex]
+        print("String left to parse:%s and Top of the Stack=%s"%(parseString[lookAheadIndex:], topVal))
         if topVal=='ε':
             parseStack.pop()
         # print("TopVal=%s and Look ahead=%s\Stack,"%(topVal, lookAheadSymbol), len(parseString[lookAheadIndex:]))
@@ -340,28 +378,34 @@ def parseTheString(parseString):
             parsed=True
             break
         elif topVal==lookAheadSymbol!='$':
+            print("Top of stack and look ahead symbol match. Incrementing look ahead and popping stack.")
             lookAheadIndex+=1
             parseStack.pop()
         elif topVal not in terminals:
             if len(parsing_table_df[lookAheadSymbol][topVal])!=0:
                 val=parsing_table_df[lookAheadSymbol][topVal][0]
                 val=val[val.find('=')+1:]
+                print("Top of stack is a variable. Popping current value and adding %s into stack."%val)
                 parseStack.pop()
                 for k in val[::-1]:
                     if k!='ε':
+                        print("Pushing %s into the stack"%k)
                         parseStack.push(k)
             else:
+                print("Error! A wrong cell is found in the table. ")
                 parsed=False
                 break
         elif topVal=='$' and lookAheadSymbol!='$':
             parsed=False
             break
+        print()
     return parsed
 
 if notLL1parsable:
     print("This grammar is not LL(1) Parsable")
 else:
     print("This grammar is LL(1) Parsable")
+    print("Parsing %s:\n"%parseString[:len(parseString)-1])
     parsable=parseTheString(parseString)
     if parsable:
         print("This string is Parsable!")
